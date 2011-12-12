@@ -41,13 +41,13 @@ from irclib import nm_to_n
 DEBUG = False
 REDIS_SERVER = 'localhost'
 SERVER = 'localhost'
-PORT = 6666
+PORT = 6667
 SERVER_PASS = None
-CHANNELS=['#test']
-NICK = 'logger'
-NICK_PASS = ""
+CHANNELS=['#hello']
+NICK = 'Logbot'
+NICK_PASS = ''
 
-HELP_MESSAGE = 'Log bot'
+HELP_MESSAGE = 'Check out http://excid3.com'
 
 redis = Redis(REDIS_SERVER)
 
@@ -75,12 +75,13 @@ class Logbot(SingleServerIRCBot):
         self.connection.disconnect('Quitting...')
 
     def write_event(self, name, event, params={}):
+        now = time.time()
         chans = event.target()
 
         msg = {
             'host': event.source(),
             'source': nm_to_n(event.source()),
-            'time': time.time(),
+            'time': now,
             'action': name
         }
 
@@ -100,6 +101,7 @@ class Logbot(SingleServerIRCBot):
 
         for chan in chans:
             redis.sadd('channels', chan)
+            redis.sadd('channel:%s:dates' % chan, time.strftime('%F', time.gmtime(now)));
             redis.hset('channel:%s:messages' % chan, message_id, json.dumps(msg))
 
     def on_all_raw_messages(self, c, e):
@@ -157,15 +159,14 @@ class Logbot(SingleServerIRCBot):
 
     def on_pubmsg(self, c, e):
         if e.arguments()[0].startswith(NICK):
-            c.privmsg(e.target(), self.format["help"])
+            c.privmsg(e.target(), self.format['help'])
         self.write_event('pubmsg', e)
 
     def on_pubnotice(self, c, e):
         self.write_event('pubnotice', e)
 
     def on_privmsg(self, c, e):
-        print nm_to_n(e.source()), e.arguments()
-        c.privmsg(nm_to_n(e.source()), self.format["help"])
+        c.privmsg(nm_to_n(e.source()), self.format['help'])
 
     def on_quit(self, c, e):
         self.write_event('quit', e)
